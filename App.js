@@ -7,7 +7,6 @@
  */
 
 import React from 'react';
-import type {Node} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -25,35 +24,87 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
-import PouchDB from 'pouchdb-core';
-PouchDB.plugin(require('pouchdb-adapter-asyncstorage').default);
+import { appSchema, tableSchema, Model, Database } from '@nozbe/watermelondb';
+import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
+import { field } from '@nozbe/watermelondb/decorators';
 
-var db = new PouchDB('todos');
-var db2 = new PouchDB('todoss');
 
-function showTodos() {
-  db.allDocs({include_docs: true, descending: true}, function (err, doc) {
-    console.log('doc.rows', doc.rows);
+const schema = appSchema({
+  version: 1,
+  tables: [
+    tableSchema({
+      name: 'todos',
+      columns: [
+        { name: '_id', type: "string" },
+        { name: "title", type: "string" },
+        { name: "completed", type: "boolean" },
+      ]
+    }),
+  ]
+});
+
+const adapter = new SQLiteAdapter({
+  schema,
+  jsi: true,
+  onSetUpError: error => {
+    console.log("Error:", error);
+  }
+});
+
+class Todo extends Model {
+  static table = 'todos';
+
+  @field('_id') _id;
+  @field('title') title;
+  @field('completed') completed;
+};
+
+const db = new Database({
+  adapter,
+  modelClasses: [Todo],
+  actionsEnabled: true,
+});
+
+const todos = db.collections.get('todos');
+
+const addTodo = async ({ title, completed }) => {
+  await db.action(async () => {
+    const Todo = await todos.create(todo => {
+      todo._id = new Date().toISOString();
+      todo.title = title;
+      todo.completed = completed;
+    })
+  });
+};
+
+const deleteAllTodos = async () => {
+  await db.action(async () => {
+    await todos.query().destroyAllPermanently();
   });
 }
 
-function addTodo(text) {
-  var todo = {
-    _id: new Date().toISOString(),
-    title: text,
+const showTodos = async () => {
+  const todosResults = await todos.query().fetch();
+  console.log(todosResults.length);
+  console.log("Fecthed todos", todosResults);
+};
+
+const runQueries = async () => {
+  await deleteAllTodos();
+  await addTodo({
+    title: "First Todo",
     completed: false,
-  };
-  db.put(todo, function callback(err, result) {
-    if (!err) {
-      showTodos();
-      console.log('Successfully posted a todo!');
-    }
   });
+  await addTodo({
+    title: "Second Todo",
+    completed: true,
+  });
+  await showTodos();
 }
 
-addTodo();
+runQueries();
 
-const Section = ({children, title}): Node => {
+const Section = ({children, title}) => {
   const isDarkMode = useColorScheme() === 'dark';
   return (
     <View style={styles.sectionContainer}>
@@ -79,7 +130,7 @@ const Section = ({children, title}): Node => {
   );
 };
 
-const App: () => Node = () => {
+const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
 
   const backgroundStyle = {
