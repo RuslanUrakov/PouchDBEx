@@ -10,9 +10,14 @@ import com.facebook.react.ReactPackage;
 import com.facebook.soloader.SoLoader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Arrays;
 
 import com.facebook.react.bridge.JSIModulePackage; // <- add
+import com.facebook.react.bridge.JSIModuleSpec;
+import com.facebook.react.bridge.JavaScriptContextHolder;
+import com.facebook.react.bridge.ReactApplicationContext;
 import com.swmansion.reanimated.ReanimatedJSIModulePackage; // <- add
+import com.nozbe.watermelondb.jsi.WatermelonDBJSIPackage;
 
 public class MainApplication extends Application implements ReactApplication {
 
@@ -40,7 +45,17 @@ public class MainApplication extends Application implements ReactApplication {
 
         @Override
         protected JSIModulePackage getJSIModulePackage() {
-          return new ReanimatedJSIModulePackage(); // <- add
+          return new JSIModulePackage() {
+            @Override
+            public List<JSIModuleSpec> getJSIModules(
+              final ReactApplicationContext reactApplicationContext,
+              final JavaScriptContextHolder jsContext
+            ) {
+              new ReanimatedJSIModulePackage().getJSIModules(reactApplicationContext, jsContext);
+              new WatermelonDBJSIPackage().getJSIModules(reactApplicationContext, jsContext);
+              return Arrays.asList();
+            }
+          };
         }
       };
 

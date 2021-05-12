@@ -13,6 +13,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
@@ -27,7 +28,7 @@ import {
 import { appSchema, tableSchema, Model, Database } from '@nozbe/watermelondb';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { field } from '@nozbe/watermelondb/decorators';
-
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 const schema = appSchema({
   version: 1,
@@ -84,9 +85,11 @@ const deleteAllTodos = async () => {
 }
 
 const showTodos = async () => {
-  const todosResults = await todos.query().fetch();
-  console.log(todosResults.length);
-  console.log("Fecthed todos", todosResults);
+  await db.action(async () => {
+    const todosResults = await todos.query().fetch();
+    console.log(todosResults.length);
+    console.log("Fecthed todos", todosResults);
+  });
 };
 
 const runQueries = async () => {
@@ -102,7 +105,32 @@ const runQueries = async () => {
   await showTodos();
 }
 
-runQueries();
+setTimeout(() => {
+  runQueries(); 
+}, 0);
+
+
+const Box = () => {
+  const offset = useSharedValue(0);
+  const animatedStyles = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateX: withSpring(offset.value * 255, {
+            damping: 20,
+            stiffness: 90,
+          }),
+        },
+      ],
+    };
+  });
+  return (
+    <>
+      <Animated.View style={[{ width: 40, height: 20, backgroundColor: 'red', flexGrow: 0 }, animatedStyles]} />
+      <TouchableOpacity onPress={() => (offset.value = Math.random())}><Text>Move</Text></TouchableOpacity>
+    </>
+  );
+}
 
 const Section = ({children, title}) => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -148,6 +176,7 @@ const App = () => {
           style={{
             backgroundColor: isDarkMode ? Colors.black : Colors.white,
           }}>
+          <Box />
           <Section title="Step One">
             Edit <Text style={styles.highlight}>App.js</Text> to change this
             screen and then come back to see your edits.
